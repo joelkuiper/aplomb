@@ -17,8 +17,9 @@
   (init)
   (reset! server
           (http-kit/run-server
-            (if (env :dev) (reload/wrap-reload #'app) app)
-            {:port port})))
+           (if (env :dev) (reload/wrap-reload #'app) app)
+           {:thread 32
+            :port port})))
 
 (defn stop-server []
   (when @server

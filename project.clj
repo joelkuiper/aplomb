@@ -18,8 +18,11 @@
                  [factual/durable-queue "0.1.5"]
                  [clj-http "1.1.2"]
                  [clojurewerkz/urly "1.0.0"]
-
+                 [crypto-random "1.2.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha"]
+                 [crouton "0.1.2"]
+                 [ring/ring-codec "1.0.0"]
+
                  [http-kit "2.1.19"]]
 
   :min-lein-version "2.0.0"
@@ -30,8 +33,7 @@
 
   :main ocpu-balancer.core
 
-  :plugins [
-            [lein-environ "1.0.0"]
+  :plugins [[lein-environ "1.0.0"]
             [lein-ancient "0.6.5"]]
 
   :profiles
