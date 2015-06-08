@@ -77,16 +77,30 @@
     (http/ok (task-status-resp req id))))
 
 
-(defn results
+(defn get-task
   [req]
   (let [id (get-in req [:params :id])]
-    (if-let [task (get @tasks id)]
-      (do
-        (timbre/debug task)
-        (http/ok (:base task)))
-      (http/not-found id))))
+    (get @tasks id)))
+
+(defn results
+  [req]
+  (if-let [task (get-task req)]
+    (:results task)
+    (http/not-found)))
+
+(defn proxy-results
+  [req]
+  (if-let [task (get-task req)]
+    (let [loc (get-in req [:route-params :*])
+          uri (str (:base task) "/" loc)]
+      (timbre/debug uri)
+      (client/get uri {:as :stream
+                       :throw-exceptions false
+                       :force-redirects true}))
+    (http/not-found)))
 
 (defroutes api-routes
   (context "/api" []
            (POST "/submit" [] enqueue)
-           (GET "/results/:id" [] results)))
+           (GET "/results/:id" [] results)
+           (GET "/results/:id/*" [] proxy-results)))
