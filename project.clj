@@ -10,6 +10,7 @@
                  [compojure "1.3.4"]
                  [ring/ring-defaults "0.1.5"]
                  [ring/ring-session-timeout "0.1.0"]
+                 [ring-cors "0.1.7"]
                  [metosin/ring-middleware-format "0.6.0"]
                  [metosin/ring-http-response "0.6.2"]
                  [prone "0.8.2"]

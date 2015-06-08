@@ -5,8 +5,9 @@
             [selmer.middleware :refer [wrap-error-page]]
             [prone.middleware :refer [wrap-exceptions]]
             [ring.util.response :refer [redirect]]
+            [ring.middleware.cors :refer [wrap-cors]]
             [ring.middleware.defaults :refer [api-defaults wrap-defaults]]
-            [ring.middleware.format :refer [wrap-restful-format]]))
+            [ring.middleware.format-params :refer [wrap-restful-params]]))
 
 (defn wrap-internal-error [handler]
   (fn [req]
@@ -21,16 +22,17 @@
 (defn wrap-dev [handler]
   (if (env :dev)
     (-> handler
-        wrap-error-page
-        wrap-exceptions)
+       wrap-error-page
+       wrap-exceptions)
     handler))
 
-
 (defn wrap-formats [handler]
-  (wrap-restful-format handler :formats [:json-kw]))
+  (wrap-restful-params handler :formats [:json-kw]))
 
 (defn wrap-base [handler]
   (-> handler
+     (wrap-cors :access-control-allow-origin [#".*"]
+                :access-control-allow-methods [:options :get :put :post])
      wrap-dev
      wrap-formats
      (wrap-defaults
