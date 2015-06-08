@@ -3,16 +3,17 @@
    [ocpu-balancer.util :refer [dissoc-in]]
    [compojure.core :refer [context defroutes OPTIONS POST GET]]
    [ring.util.http-response :as http]
+   [ring.util.request :refer [request-url]]
    [clj-http.client :as client]
    [taoensso.timbre :as timbre]
    [clojure.java.io :as io]
-   [durable-queue :as q]
    [clojure.core.async :as async]
-   ))
+   [clojurewerkz.urly.core :as urly]
+   [durable-queue :as q]))
 
 (declare process)
 
-(def qk :ocpu) ; key for the queue
+(def qk :queue) ; key for the queue
 
 ;; Durable queue, new posts will be enqeued and consumed by upstreams
 (defonce q (q/queues "/tmp" {}))
@@ -23,8 +24,7 @@
 (defonce tasks (atom {}))
 
 (defn start-consumers
-  "Start consumers threads that will consume work
-  from the q and put the results into the out-chan."
+  "Start consumers threads that will consume work from the q"
   [upstreams]
   (timbre/info "initializing load balanced consumers")
   (doseq [upstream upstreams]
@@ -34,38 +34,59 @@
         (timbre/info "awaiting ..." base "core" core)
         (async/go
           (while true
-            (let [task (q/take! q qk)
-                  id (deref task)
-                  data (get @tasks id)
-                  result (process base (:req data))]
-              (swap! tasks assoc-in [id :status] ::completed)
-              (q/complete! task))))))))
+            (process base (q/take! q qk))))))))
 
 (defn init! [] (start-consumers upstreams))
 
-(defn process
+(defn send-upstream
   [base req]
-  (timbre/debug req)
   (let [f (get-in req [:query-params "f"])
         uri (str  base "/" f)
         upstream-req (dissoc-in req  [:headers "content-length"])]
     (timbre/info "sending off to" uri)
     (client/post uri upstream-req)))
 
+(defn process
+  [base task]
+  (let [out-chan (async/chan)
+        id (deref task)]
+    (when-let [req (get-in @tasks [id :req])]
+      (swap! tasks update-in [id] assoc :out-chan out-chan :base base)
+      (async/put! out-chan (send-upstream base (get-in @tasks [id :req])))
+      (async/take! out-chan #(swap! tasks assoc-in [id :results] %))
+      (q/complete! task))))
 
 (defn uuid [] (str (java.util.UUID/randomUUID)))
+
+(defn task-status-resp
+  [req id]
+  (let [req-url (urly/url-like (request-url req))
+        result-url (.mutateQuery (.mutatePath req-url (str "/api/results/" id)) nil)]
+    {:id id
+     :requestUri (str req-url)
+     :resultUri (str result-url)
+     :queue (q/stats q)}))
 
 (defn enqueue
   [req]
   (let [id (uuid)
         chan (:async-channel req)
-        bare-req (dissoc req :async-channel)
-        stats (q/stats q)]
-    (swap! tasks assoc id {:req bare-req :status ::queued})
+        bare-req (dissoc req :async-channel)]
+    (swap! tasks assoc id {:req bare-req})
     (q/put! q qk id)
-    (timbre/info "accepted" id stats)
-    (http/ok stats)))
+    (http/ok (task-status-resp req id))))
+
+
+(defn results
+  [req]
+  (let [id (get-in req [:params :id])]
+    (if-let [task (get @tasks id)]
+      (do
+        (timbre/debug task)
+        (http/ok (:base task)))
+      (http/not-found id))))
 
 (defroutes api-routes
   (context "/api" []
-           (POST "/" [:as req] (enqueue req))))
+           (POST "/submit" [] enqueue)
+           (GET "/results/:id" [] results)))
