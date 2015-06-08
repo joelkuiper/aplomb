@@ -1,6 +1,8 @@
 (ns ocpu-balancer.routes.api
   (:require
    [ocpu-balancer.util :refer [dissoc-in]]
+   [environ.core :refer [env]]
+   [clojure.string :as str]
    [compojure.core :refer [context defroutes OPTIONS POST GET]]
    [ring.util.http-response :as http]
    [org.httpkit.server :as server]
@@ -21,8 +23,12 @@
 ;; It's not actually durable, since we rely on an in-memory atom for the requests...
 (defonce q (q/queues "/tmp" {}))
 
-(defonce upstreams
-  [{:uri "http://192.168.174.128" :cores 1}])
+(defn- parse-list
+  [s]
+  (let [ks [:uri :cores]]
+    (map #(apply array-map (interleave ks (str/split % #"\|"))) (str/split s #","))))
+
+(defonce upstreams (parse-list (env :upstreams)))
 
 (defonce tasks (atom {}))
 
@@ -33,7 +39,7 @@
   (doseq [upstream upstreams]
     (let [base (:uri upstream)]
       (timbre/info "starting" base)
-      (dotimes [core (:cores upstream)]
+      (dotimes [core (Integer/parseInt (:cores upstream))]
         (timbre/info "awaiting ..." base "core" core)
         (go
           (while true

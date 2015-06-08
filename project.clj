@@ -29,7 +29,8 @@
   :uberjar-name "ocpu-balancer.jar"
   :jvm-opts ["-server"]
 
-  :env {:repl-port 7001}
+  :env {:repl-port 7001
+        :upstreams "http://192.168.178.27/|1,http://192.168.178.27/|1"}
 
   :main ocpu-balancer.core
 
