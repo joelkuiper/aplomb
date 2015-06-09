@@ -32,7 +32,7 @@
 (defn wrap-base [handler]
   (-> handler
      (wrap-cors :access-control-allow-origin [#".*"]
-                :access-control-allow-methods [:options :get :put :post])
+                :access-control-allow-methods [:options :get :put :post :put])
      wrap-dev
      wrap-formats
      (wrap-defaults

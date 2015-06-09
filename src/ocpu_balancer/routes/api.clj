@@ -156,6 +156,7 @@
       (http/not-found)
       (dosync
        (swap! tasks assoc-in [id :last-update] update) ;; update the last status
+       (timbre/debug "sending" update "to" id)
        (let [connected (get @clients id #{})]
          (doseq [client connected]
            (server/send! client update)))
