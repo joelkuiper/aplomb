@@ -82,7 +82,7 @@
       (timbre/debug "starting with" id)
       (swap! tasks update-in [id] assoc
              :base base
-             :resp (future (send-upstream id base (:req t))))
+             :resp (deliver (:resp t) (send-upstream id base (:req t))))
       (deref (get-in @tasks [id :resp])) ; block future
       (timbre/debug "done with" id)
       (q/complete! task))))
@@ -105,7 +105,7 @@
   [req]
   (let [id (id)
         bare-req (dissoc req :async-channel)]
-    (swap! tasks assoc id {:req bare-req})
+    (swap! tasks assoc id {:req bare-req :resp (promise)})
     (q/put! q qk id)
     (http/content-type
      (http/accepted
@@ -157,9 +157,7 @@
       (dosync
        (swap! tasks assoc-in [id :last-update] update) ;; update the last status
        (let [connected (get @clients id #{})]
-         (timbre/debug id @clients)
          (doseq [client connected]
-           (timbre/debug "sending" update "...")
            (server/send! client update)))
        (http/no-content)))))
 
