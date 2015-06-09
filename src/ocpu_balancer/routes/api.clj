@@ -78,8 +78,7 @@
 (defn process
   [base task]
   (let [id (deref task)]
-    (
-     when-let [t (get @tasks id)]
+    (when-let [t (get @tasks id)]
       (timbre/debug "starting with" id)
       (swap! tasks update-in [id] assoc
              :base base
