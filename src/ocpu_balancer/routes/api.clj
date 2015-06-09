@@ -1,6 +1,6 @@
 (ns ocpu-balancer.routes.api
   (:require
-   [ocpu-balancer.util :refer [dissoc-in]]
+   [ocpu-balancer.util :refer [dissoc-in canonical-host]]
    [environ.core :refer [env]]
    [clojure.string :as str]
    [compojure.core :refer [context defroutes OPTIONS POST PUT GET]]
@@ -35,8 +35,10 @@
 
 (defn base-uri
   [req]
-  (let [request-uri (urly/url-like (request-url req))]
-    (.mutateQuery (.mutatePath request-uri nil) nil)))
+  (let [scheme (name (:scheme req))
+        base (str scheme "://" canonical-host)
+        uri (urly/url-like base)]
+    uri))
 
 (defn start-consumers
   "Start consumers threads that will consume work from the q"
@@ -49,28 +51,35 @@
         (timbre/info "awaiting ..." base "core" core)
         (go
           (while true
-            (process base (q/take! q qk))))))))
+            (try
+              (process base (q/take! q qk))
+              (catch Exception e
+                (do (timbre/error e)
+                    (http/service-unavailable (.getMessage e)))))))))))
 
 (defn init! [] (start-consumers upstreams))
 
 (defn send-upstream
   [id base req]
   (let [f (get-in req [:query-params "f"])
-        uri (str  base "/" f)
+        uri (str base "/" f)
+        status-uri  (str (.mutatePath (base-uri req) (str "/api/status/" id)))
         upstream-req
         (-> req
            (dissoc-in [:headers "content-length"])
-           (assoc-in [:form-params "__status"]
-                     {"id" id
-                      "base" (str (base-uri req))})
+           (assoc-in [:form-params "statusUri"] (json/encode status-uri))
            (assoc :throw-exceptions false))]
     (timbre/debug "sending off to" uri)
-    (client/post uri upstream-req)))
+    (try
+      (client/post uri upstream-req)
+      (catch Exception e
+        (do (timbre/error e) (http/service-unavailable (.getMessage e)))))))
 
 (defn process
   [base task]
   (let [id (deref task)]
-    (when-let [t (get @tasks id)]
+    (
+     when-let [t (get @tasks id)]
       (timbre/debug "starting with" id)
       (swap! tasks update-in [id] assoc
              :base base
@@ -102,9 +111,7 @@
     (http/content-type
      (http/accepted
       (json/encode (task-status-resp req id)))
-     "application/json; utf-8"
-     )))
-
+     "application/json")))
 
 (defn get-task
   [req]
@@ -154,7 +161,7 @@
          (timbre/debug id @clients)
          (doseq [client connected]
            (timbre/debug "sending" update "...")
-           (server/send! client update false)))
+           (server/send! client update)))
        (http/no-content)))))
 
 (defn status-updates
@@ -163,7 +170,7 @@
         last-update (get-in @tasks [id :last-update] "")]
     (server/with-channel req channel
       (connect-client id channel)
-      (server/send! channel last-update false)
+      (server/send! channel last-update)
       (server/on-receive channel (fn [e] (timbre/warn "unexpected" e "for" id)))
       (server/on-close channel (fn [_] (disconnect-client id channel))))))
 

@@ -31,6 +31,7 @@
   :jvm-opts ["-server"]
 
   :env {:repl-port 7001
+        :port 3000
         :upstreams "http://192.168.178.27/|1,http://192.168.178.27/|1"}
 
   :main ocpu-balancer.core

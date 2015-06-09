@@ -4,7 +4,7 @@
             [clojure.java.io :as io]))
 
 (defn home-page []
-  "hey, hello")
+  "we're alive")
 
 
 (defroutes home-routes

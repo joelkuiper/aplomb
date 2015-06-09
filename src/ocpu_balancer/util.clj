@@ -1,5 +1,9 @@
-(ns ocpu-balancer.util)
+(ns ocpu-balancer.util
+  (:require [environ.core :refer [env]]))
 
+(def canonical-host
+  (or (:host-addr env)
+     (str (.getCanonicalHostName (java.net.InetAddress/getLocalHost)) ":" (env :port))))
 
 (defn dissoc-in
   "Dissociates an entry from a nested associative structure returning a new
