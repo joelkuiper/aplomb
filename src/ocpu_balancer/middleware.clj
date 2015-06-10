@@ -37,7 +37,5 @@
                 :access-control-allow-methods [:options :get :put :post :put])
      wrap-dev
      wrap-formats
-     (wrap-defaults
-      (-> api-defaults
-         (assoc-in [:security :anti-forgery] false)))
+     (wrap-defaults api-defaults)
      wrap-internal-error))
