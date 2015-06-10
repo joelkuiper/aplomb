@@ -1,9 +1,6 @@
 FROM ubuntu:14.10
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN echo "Europe/Amsterdam" > /etc/timezone
-RUN dpkg-reconfigure tzdata
-
 # Set locale
 RUN locale-gen en_US.UTF-8
 RUN update-locale LANG=en_US.UTF-8

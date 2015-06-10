@@ -91,12 +91,11 @@
 
 (defn task-status-resp
   [req id]
-  (let [request-uri (urly/url-like (request-url req))
-        base (base-uri req)
+  (let [base (base-uri req)
         response-uri (.mutatePath base (str "/api/response/" id))
         status-uri (.mutateProtocol (.mutatePath base (str "/api/status/" id "/ws")) "ws")]
     {:id id
-     :requestUri (str request-uri)
+     :requestUri (request-url req)
      :responseUri (str response-uri)
      :statusUri (str status-uri)
      :queue (q/stats q)}))
