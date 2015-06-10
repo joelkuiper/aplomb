@@ -2,7 +2,7 @@
   (:require [compojure.core :refer [defroutes routes wrap-routes]]
             [ocpu-balancer.routes.home :refer [home-routes]]
             [ocpu-balancer.routes.api :refer [api-routes] :as api]
-
+            [ocpu-balancer.util :refer [in-dev]]
             [ocpu-balancer.middleware :as middleware]
             [compojure.route :as route]
             [taoensso.timbre :as timbre]
@@ -19,7 +19,7 @@
 (defn start-nrepl
   "Start a network repl for debugging when the :repl-port is set in the environment."
   []
-  (when-let [port (env :repl-port)]
+  (when-let [port (Integer/parseInt (str (env :repl-port)))]
     (try
       (reset! nrepl-server (nrepl/start-server :port port))
       (timbre/info "nREPL server started on port" port)
@@ -38,7 +38,7 @@
   []
   (timbre/set-config!
    [:appenders :rotor]
-   {:min-level             :info
+   {:min-level             (if in-dev :debug :info)
     :enabled?              true
     :async?                false ; should be always false for rotor
     :max-message-per-msecs nil
@@ -51,7 +51,7 @@
   (start-nrepl)
   (api/init!)
   (timbre/info "\n-=[ ocpu-balancer started successfully"
-               (when (env :dev) "using the development profile") "]=-"))
+               (when in-dev "using the development profile") "]=-"))
 
 (defn destroy
   "destroy will be called when your application

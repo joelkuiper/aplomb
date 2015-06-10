@@ -1,13 +1,15 @@
 (ns ocpu-balancer.middleware
-  (:require [taoensso.timbre :as timbre]
-            [environ.core :refer [env]]
-            [clojure.java.io :as io]
-            [selmer.middleware :refer [wrap-error-page]]
-            [prone.middleware :refer [wrap-exceptions]]
-            [ring.util.response :refer [redirect]]
-            [ring.middleware.cors :refer [wrap-cors]]
-            [ring.middleware.defaults :refer [api-defaults wrap-defaults]]
-            [ring.middleware.format-params :refer [wrap-restful-params]]))
+  (:require
+   [ocpu-balancer.util :refer [in-dev]]
+   [taoensso.timbre :as timbre]
+   [environ.core :refer [env]]
+   [clojure.java.io :as io]
+   [selmer.middleware :refer [wrap-error-page]]
+   [prone.middleware :refer [wrap-exceptions]]
+   [ring.util.response :refer [redirect]]
+   [ring.middleware.cors :refer [wrap-cors]]
+   [ring.middleware.defaults :refer [api-defaults wrap-defaults]]
+   [ring.middleware.format-params :refer [wrap-restful-params]]))
 
 (defn wrap-internal-error [handler]
   (fn [req]
@@ -20,7 +22,7 @@
          :body (-> "templates/error.html" io/resource slurp)}))))
 
 (defn wrap-dev [handler]
-  (if (env :dev)
+  (if in-dev
     (-> handler
        wrap-error-page
        wrap-exceptions)

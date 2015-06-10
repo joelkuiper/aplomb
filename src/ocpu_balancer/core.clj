@@ -1,7 +1,7 @@
 (ns ocpu-balancer.core
   (:require
    [ocpu-balancer.handler :refer [app init destroy]]
-   [ocpu-balancer.util :refer [canonical-host]]
+   [ocpu-balancer.util :refer [canonical-host in-dev]]
    [ring.middleware.reload :as reload]
    [org.httpkit.server :as http-kit]
    [environ.core :refer [env]]
@@ -15,7 +15,7 @@
   (init)
   (reset! server
           (http-kit/run-server
-           (if (env :dev) (reload/wrap-reload #'app) app)
+           (if in-dev (reload/wrap-reload #'app) app)
            {:thread 32
             :port port})))
 

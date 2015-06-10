@@ -5,6 +5,9 @@
   (or (:host-addr env)
      (str (.getCanonicalHostName (java.net.InetAddress/getLocalHost)) ":" (env :port))))
 
+(def truthy?  #{"true" "TRUE" "True" "yes" "YES" "y" "1"})
+(def in-dev (truthy? (str (:dev env))))
+
 (defn dissoc-in
   "Dissociates an entry from a nested associative structure returning a new
   nested structure. keys is a sequence of keys. Any empty maps that result
