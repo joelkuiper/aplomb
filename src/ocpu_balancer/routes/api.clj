@@ -122,7 +122,8 @@
         resp (:resp task)]
     (if resp
       (server/with-channel req channel
-        (server/send! channel @resp true))
+        (go
+          (server/send! channel @resp true)))
       (http/not-found))))
 
 (defn proxy-response
