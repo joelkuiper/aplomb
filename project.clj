@@ -15,6 +15,8 @@
                  [metosin/ring-http-response "0.6.2"]
                  [prone "0.8.2"]
                  [org.clojure/tools.nrepl "0.2.10"]
+                 [com.google.guava/guava "18.0"]
+                 [potemkin "0.3.13"]
 
                  [factual/durable-queue "0.1.5"]
                  [clj-http "1.1.2"]
@@ -42,12 +44,11 @@
   :profiles
   {:uberjar {:omit-source true
              :env {:production true}
-
+             :dev false
              :aot :all}
    :dev {:dependencies [[ring-mock "0.1.5"]
                         [ring/ring-devel "1.3.2"]
-                        [pjstadig/humane-test-output "0.7.0"]
-                        ]
+                        [pjstadig/humane-test-output "0.7.0"]]
          :source-paths ["env/dev/clj"]
          :repl-options {:init-ns ocpu-balancer.core}
          :injections [(require 'pjstadig.humane-test-output)

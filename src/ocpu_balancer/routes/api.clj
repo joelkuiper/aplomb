@@ -1,6 +1,7 @@
 (ns ocpu-balancer.routes.api
   (:require
    [ocpu-balancer.util :refer [dissoc-in canonical-host]]
+   [ocpu-balancer.cache :as cache]
    [environ.core :refer [env]]
    [clojure.string :as str]
    [compojure.core :refer [context defroutes OPTIONS POST PUT GET]]
@@ -10,18 +11,21 @@
    [cheshire.core :as json]
    [clj-http.client :as client]
    [taoensso.timbre :as timbre]
-   [clojure.java.io :as io]
    [crypto.random :refer [url-part]]
    [clojure.core.async :as async :refer [<! >! go chan]]
    [clojurewerkz.urly.core :as urly]
    [durable-queue :as q]))
+
+;;;;;;;;;;;
+;; Set-up
+;;;;;;;;;;;
 
 (declare process)
 
 (def qk :ocpu) ; key for the queue
 
 ;; Durable queue, new posts will be enqeued and consumed by upstreams
-;; It's not actually durable, since we rely on an in-memory atom for the requests...
+;; It's not actually durable, since we rely on an in-memory atom for the requests, but it has a nice API
 (defonce q (q/queues "/tmp" {}))
 
 (defn- parse-list
@@ -31,14 +35,13 @@
 
 (defonce upstreams (parse-list (env :upstreams)))
 
-(defonce tasks (atom {}))
+(defonce tasks (cache/create-cache :soft-values true)) ;; THIS IS MUTABLE!
 
 (defn base-uri
   [req]
   (let [scheme (name (:scheme req))
-        base (str scheme "://" canonical-host)
-        uri (urly/url-like base)]
-    uri))
+        base (str scheme "://" canonical-host)]
+    (urly/url-like base)))
 
 (defn start-consumers
   "Start consumers threads that will consume work from the q"
@@ -49,15 +52,18 @@
       (timbre/info "starting" base)
       (dotimes [core (Integer/parseInt (:cores upstream))]
         (timbre/info "awaiting ..." base "core" core)
-        (go
-          (while true
-            (try
-              (process base (q/take! q qk))
-              (catch Exception e
-                (do (timbre/error e)
-                    (http/service-unavailable (.getMessage e)))))))))))
+        (go (while true
+              (try
+                (process base (q/take! q qk))
+                (catch Exception e
+                  (do (timbre/error e)
+                      (http/service-unavailable (.getMessage e)))))))))))
 
 (defn init! [] (start-consumers upstreams))
+
+;;;;;;;;;;;;;;
+;; Processing
+;;;;;;;;;;;;;;
 
 (defn send-upstream
   [id base req]
@@ -78,33 +84,39 @@
 (defn process
   [base task]
   (let [id (deref task)]
-    (when-let [t (get @tasks id)]
+    (when-let [t (get tasks id)]
       (timbre/debug "starting with" id)
-      (swap! tasks update-in [id] assoc
-             :base base
-             :resp (deliver (:resp t) (send-upstream id base (:req t))))
-      (deref (get-in @tasks [id :resp])) ; block future
-      (timbre/debug "done with" id)
-      (q/complete! task))))
 
-(defn id [] (crypto.random/url-part 8))
+      (update-in tasks [id] assoc
+                 :base base
+                 :resp (deliver (:resp t) (send-upstream id base (:req t))))
+
+      (deref (:resp (get tasks id))) ; block future
+      (q/complete! task)
+      (timbre/debug "done with" id))))
+
+(defn random-id [] (crypto.random/url-part 8))
+
+(defn secure? [req] (= (:scheme req) :https))
 
 (defn task-status-resp
   [req id]
   (let [base (base-uri req)
         response-uri (.mutatePath base (str "/api/response/" id))
-        status-uri (.mutateProtocol (.mutatePath base (str "/api/status/" id "/ws")) "ws")]
+        ws-protocol (if (secure? req) "wss" "ws")
+        status-uri (.mutateProtocol
+                    (.mutatePath base (str "/api/status/" id "/ws")) ws-protocol)]
     {:id id
      :requestUri (request-url req)
      :responseUri (str response-uri)
      :statusUri (str status-uri)
-     :queue (q/stats q)}))
+     :queue (get (q/stats q) (name qk))}))
 
 (defn enqueue
   [req]
-  (let [id (id)
+  (let [id (random-id)
         bare-req (dissoc req :async-channel)]
-    (swap! tasks assoc id {:req bare-req :resp (promise)})
+    (assoc tasks id {:req bare-req :resp (promise)})
     (q/put! q qk id)
     (http/content-type
      (http/accepted
@@ -114,7 +126,7 @@
 (defn get-task
   [req]
   (let [id (get-in req [:params :id])]
-    [id (get @tasks id)]))
+    [id (get tasks id)]))
 
 (defn response
   [req]
@@ -136,6 +148,11 @@
                        :force-redirects true}))
     (http/not-found)))
 
+
+;;;;;;;;;;;
+;; Updates
+;;;;;;;;;;;
+
 (def clients (ref {})) ; id -> set(chan)
 
 (defn- alter-client
@@ -155,7 +172,7 @@
     (if-not task
       (http/not-found)
       (dosync
-       (swap! tasks assoc-in [id :last-update] update) ;; update the last status
+       (assoc-in tasks [id :last-update] update) ;; update the last status
        (let [connected (get @clients id #{})]
          (doseq [client connected]
            (server/send! client update)))
@@ -164,12 +181,17 @@
 (defn status-updates
   [req]
   (let [[id task] (get-task req)
-        last-update (get-in @tasks [id :last-update] "")]
+        last-update (get (get tasks id) :last-update "")]
     (server/with-channel req channel
       (connect-client id channel)
       (server/send! channel last-update)
       (server/on-receive channel (fn [e] (timbre/warn "unexpected" e "for" id)))
       (server/on-close channel (fn [_] (disconnect-client id channel))))))
+
+
+;;;;;;;;;;;
+;; Routes
+;;;;;;;;;;;
 
 (defroutes api-routes
   (context "/api" []
