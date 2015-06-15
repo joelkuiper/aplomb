@@ -17,6 +17,7 @@
                  [org.clojure/tools.nrepl "0.2.10"]
                  [com.google.guava/guava "18.0"]
                  [potemkin "0.3.13"]
+                 [buddy "0.5.5"]
 
                  [factual/durable-queue "0.1.5"]
                  [clj-http "1.1.2"]
@@ -34,6 +35,7 @@
 
   :env {:repl-port 7001
         :port 3000
+        :api-secret "lAoc1s4xVmqcl3mKhK15zL3zp9biUt0HAqtyjaqOX8E=" ;; generate with (bytes->base64 (nonce/random-bytes 32))
         :upstreams "http://192.168.178.27/|1,http://192.168.178.27/|1"}
 
   :main ocpu-balancer.core

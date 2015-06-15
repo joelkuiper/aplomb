@@ -2,6 +2,7 @@
   (:require
    [ocpu-balancer.util :refer [dissoc-in canonical-host]]
    [ocpu-balancer.cache :as cache]
+   [ocpu-balancer.security :as security]
    [environ.core :refer [env]]
    [clojure.string :as str]
    [compojure.core :refer [context defroutes OPTIONS POST PUT GET]]
@@ -35,7 +36,8 @@
 
 (defonce upstreams (parse-list (env :upstreams)))
 
-(defonce tasks (cache/create-cache :soft-values true)) ;; THIS IS MUTABLE!
+ ;; WARNING: THIS IS MUTABLE!
+(defonce tasks (cache/create-cache :soft-values true))
 
 (defn base-uri
   [req]
@@ -52,12 +54,13 @@
       (timbre/info "starting" base)
       (dotimes [core (Integer/parseInt (:cores upstream))]
         (timbre/info "awaiting ..." base "core" core)
-        (go (while true
-              (try
-                (process base (q/take! q qk))
-                (catch Exception e
-                  (do (timbre/error e)
-                      (http/service-unavailable (.getMessage e)))))))))))
+        (go
+          (while true
+            (try
+              (process base (q/take! q qk))
+              (catch Exception e
+                (do (timbre/error e)
+                    (http/service-unavailable (.getMessage e)))))))))))
 
 (defn init! [] (start-consumers upstreams))
 
@@ -65,16 +68,23 @@
 ;; Processing
 ;;;;;;;;;;;;;;
 
+(defn status-uri
+  [req id]
+  (str (.mutateQuery
+        (.mutatePath (base-uri req) (str "/api/status"))
+        (str "id=" (security/sign {:id id})))))
+
 (defn send-upstream
   [id base req]
-  (let [f (get-in req [:query-params "f"])
+  (let [f (get-in req [:query-params "url"])
         uri (str base "/" f)
-        status-uri  (str (.mutatePath (base-uri req) (str "/api/status/" id)))
+        status-uri (status-uri req id)
         upstream-req
         (-> req
            (dissoc-in [:headers "content-length"])
            (assoc-in [:form-params "statusUri"] (json/encode status-uri))
            (assoc :throw-exceptions false))]
+    (timbre/debug status-uri)
     (timbre/debug "sending off to" uri)
     (try
       (client/post uri upstream-req)
@@ -123,14 +133,13 @@
       (json/encode (task-status-resp req id)))
      "application/json")))
 
-(defn get-task
-  [req]
-  (let [id (get-in req [:params :id])]
-    [id (get tasks id)]))
+(defn- get-task [id] (get tasks id))
+
+(defn- get-id [req] (get-in req [:params :id]))
 
 (defn response
   [req]
-  (let [[id task] (get-task req)
+  (let [task (get-task (get-id req))
         resp (:resp task)]
     (if resp
       (server/with-channel req channel
@@ -140,7 +149,7 @@
 
 (defn proxy-response
   [req]
-  (if-let [[id task] (get-task req)]
+  (if-let [task (get-task (get-id req))]
     (let [loc (get-in req [:route-params :*])
           uri (str (:base task) "/" loc)]
       (client/get uri {:as :stream
@@ -167,7 +176,8 @@
 
 (defn update-status
   [req]
-  (let [[id task] (get-task req)
+  (let [id (:id (security/unsign (get-in req [:query-params "id"])))
+        task (get-task id)
         update (slurp (:body req))]
     (if-not task
       (http/not-found)
@@ -180,13 +190,17 @@
 
 (defn status-updates
   [req]
-  (let [[id task] (get-task req)
-        last-update (get (get tasks id) :last-update "")]
-    (server/with-channel req channel
-      (connect-client id channel)
-      (server/send! channel last-update)
-      (server/on-receive channel (fn [e] (timbre/warn "unexpected" e "for" id)))
-      (server/on-close channel (fn [_] (disconnect-client id channel))))))
+  (let [id (get-id req)
+        task (get-task id)
+        last-update (get task :last-update "")]
+    (if task
+      (do
+        (server/with-channel req channel
+          (connect-client id channel)
+          (server/send! channel last-update)
+          (server/on-receive channel (fn [e] (timbre/warn "unexpected" e "for" id)))
+          (server/on-close channel (fn [_] (disconnect-client id channel)))))
+      (http/not-found))))
 
 
 ;;;;;;;;;;;
@@ -200,4 +214,4 @@
            (GET "/response/:id/*" [] proxy-response)
 
            (GET "/status/:id/ws" [] status-updates)
-           (PUT "/status/:id" [] update-status)))
+           (PUT "/status" [] update-status)))
