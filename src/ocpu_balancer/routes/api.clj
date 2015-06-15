@@ -1,5 +1,6 @@
 (ns ocpu-balancer.routes.api
   (:require
+   [buddy.auth.accessrules :refer [restrict]]
    [ocpu-balancer.util :refer [dissoc-in canonical-host]]
    [ocpu-balancer.cache :as cache]
    [ocpu-balancer.security :as security]
@@ -209,7 +210,7 @@
 
 (defroutes api-routes
   (context "/api" []
-           (POST "/submit" [] enqueue)
+           (POST "/submit" [] (restrict enqueue {:handler security/should-be-authenticated}))
            (GET "/response/:id" [] response)
            (GET "/response/:id/*" [] proxy-response)
 

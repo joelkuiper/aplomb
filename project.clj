@@ -35,7 +35,7 @@
 
   :env {:repl-port 7001
         :port 3000
-        :api-secret "lAoc1s4xVmqcl3mKhK15zL3zp9biUt0HAqtyjaqOX8E=" ;; generate with (bytes->base64 (nonce/random-bytes 32))
+        :api-secret "secret" ;; generate with (ocpu-balancer.security/random-token)
         :upstreams "http://192.168.178.27/|1,http://192.168.178.27/|1"}
 
   :main ocpu-balancer.core
