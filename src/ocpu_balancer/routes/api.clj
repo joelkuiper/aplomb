@@ -95,16 +95,20 @@
 (defn process
   [base task]
   (let [id (deref task)]
-    (when-let [t (get tasks id)]
-      (timbre/debug "starting with" id)
+    (if-let [t (get tasks id)]
+      (do
+        (timbre/debug "starting with" id)
 
-      (update-in tasks [id] assoc
-                 :base base
-                 :resp (deliver (:resp t) (send-upstream id base (:req t))))
+        (update-in tasks [id] assoc
+                   :base base
+                   :resp (deliver (:resp t) (send-upstream id base (:req t))))
 
-      (deref (:resp (get tasks id))) ; block future
-      (q/complete! task)
-      (timbre/debug "done with" id))))
+        (deref (:resp (get tasks id))) ; block future
+        (q/complete! task)
+        (timbre/debug "done with" id))
+      (do
+        (q/complete! task)
+        (timbre/warn "failed to process" id)))))
 
 (defn random-id [] (crypto.random/url-part 8))
 
