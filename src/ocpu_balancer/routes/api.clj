@@ -85,7 +85,6 @@
            (dissoc-in [:headers "content-length"])
            (assoc-in [:form-params "statusUri"] (json/encode status-uri))
            (assoc :throw-exceptions false))]
-    (timbre/debug status-uri)
     (timbre/debug "sending off to" uri)
     (try
       (client/post uri upstream-req)
