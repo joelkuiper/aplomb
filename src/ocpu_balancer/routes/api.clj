@@ -42,7 +42,7 @@
 
 (defn base-uri
   [req]
-  (let [scheme (name (:scheme req))
+  (let [scheme (if in-dev "http" "https")
         base (str scheme "://" canonical-host)]
     (urly/url-like base)))
 
