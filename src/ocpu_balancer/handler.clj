@@ -19,7 +19,7 @@
 (defn start-nrepl
   "Start a network repl for debugging when the :repl-port is set in the environment."
   []
-  (when-let [port (Integer/parseInt (str (env :repl-port)))]
+  (when-let [port (and (env :repl-port) (Integer/parseInt (str (env :repl-port))))]
     (try
       (reset! nrepl-server (nrepl/start-server :port port))
       (timbre/info "nREPL server started on port" port)

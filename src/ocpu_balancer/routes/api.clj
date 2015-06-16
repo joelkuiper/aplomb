@@ -1,7 +1,7 @@
 (ns ocpu-balancer.routes.api
   (:require
    [buddy.auth.accessrules :refer [restrict]]
-   [ocpu-balancer.util :refer [dissoc-in canonical-host]]
+   [ocpu-balancer.util :refer [in-dev dissoc-in canonical-host]]
    [ocpu-balancer.cache :as cache]
    [ocpu-balancer.security :as security]
    [environ.core :refer [env]]
@@ -111,13 +111,11 @@
 
 (defn random-id [] (crypto.random/url-part 8))
 
-(defn secure? [req] (= (:scheme req) :https))
-
 (defn task-status-resp
   [req id]
   (let [base (base-uri req)
         response-uri (.mutatePath base (str "/api/response/" id))
-        ws-protocol (if (secure? req) "wss" "ws")
+        ws-protocol (if in-dev "ws" "wss")
         status-uri (.mutateProtocol
                     (.mutatePath base (str "/api/status/" id "/ws")) ws-protocol)]
     {:id id
@@ -161,7 +159,6 @@
                        :force-redirects true}))
     (http/not-found)))
 
-
 ;;;;;;;;;;;
 ;; Updates
 ;;;;;;;;;;;
@@ -182,11 +179,12 @@
   [req]
   (let [id (:id (security/unsign (get-in req [:query-params "id"])))
         task (get-task id)
-        update (slurp (:body req))]
+        update (if (:body req) (slurp (:body req)) "{}")]
     (if-not task
       (http/not-found)
       (dosync
        (assoc-in tasks [id :last-update] update) ;; update the last status
+       (timbre/debug id update)
        (let [connected (get @clients id #{})]
          (doseq [client connected]
            (server/send! client update)))
