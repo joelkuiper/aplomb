@@ -2,13 +2,12 @@
   (:require
    [taoensso.timbre :as timbre]
    [environ.core :refer [env]]
-   [buddy.core.nonce :as nonce]
-   [buddy.core.codecs :as codecs]
+   [crypto.random :refer [base64]]
    [buddy.auth :refer [authenticated? throw-unauthorized]]
    [buddy.auth.backends.token :refer [token-backend]]
    [buddy.sign.jws :as jws]))
 
-(defn random-token [] (codecs/bytes->hex (nonce/random-bytes 32)))
+(defn random-token [] (base64 32))
 
 (def secret (or (:api-secret env) (random-token)))
 

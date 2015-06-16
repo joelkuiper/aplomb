@@ -40,8 +40,7 @@
  ;; WARNING: THIS IS MUTABLE!
 (defonce tasks (cache/create-cache :soft-values true))
 
-(defn base-uri
-  [req]
+(def base-uri
   (let [scheme (if in-dev "http" "https")
         base (str scheme "://" canonical-host)]
     (urly/url-like base)))
@@ -72,7 +71,7 @@
 (defn status-uri
   [req id]
   (str (.mutateQuery
-        (.mutatePath (base-uri req) (str "/api/status"))
+        (.mutatePath base-uri (str "/api/status"))
         (str "id=" (security/sign {:id id})))))
 
 (defn send-upstream
@@ -113,11 +112,10 @@
 
 (defn task-status-resp
   [req id]
-  (let [base (base-uri req)
-        response-uri (.mutatePath base (str "/api/response/" id))
+  (let [response-uri (.mutatePath base-uri (str "/api/response/" id))
         ws-protocol (if in-dev "ws" "wss")
         status-uri (.mutateProtocol
-                    (.mutatePath base (str "/api/status/" id "/ws")) ws-protocol)]
+                    (.mutatePath base-uri (str "/api/status/" id "/ws")) ws-protocol)]
     {:id id
      :requestUri (request-url req)
      :responseUri (str response-uri)
@@ -184,7 +182,6 @@
       (http/not-found)
       (dosync
        (assoc-in tasks [id :last-update] update) ;; update the last status
-       (timbre/debug id update)
        (let [connected (get @clients id #{})]
          (doseq [client connected]
            (server/send! client update)))
