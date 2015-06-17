@@ -137,6 +137,10 @@
 
 (defn- get-id [req] (get-in req [:params :id]))
 
+;;;;;;;;;;;
+;; Proxy
+;;;;;;;;;;;
+
 (defn response
   [req]
   (let [task (get-task (get-id req))
@@ -152,9 +156,12 @@
   (if-let [task (get-task (get-id req))]
     (let [loc (get-in req [:route-params :*])
           uri (str (:base task) "/" loc)]
-      (client/get uri {:as :stream
-                       :throw-exceptions false
-                       :force-redirects true}))
+
+      (-> (client/get uri {:as :stream
+                          :throw-exceptions false
+                          :force-redirects true})
+         (dissoc-in [:headers "transfer-encoding"]))
+      )
     (http/not-found)))
 
 ;;;;;;;;;;;

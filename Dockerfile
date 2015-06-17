@@ -23,4 +23,4 @@ ENV PORT 3000
 
 ENTRYPOINT ["java"]
 
-CMD ["-jar", "/var/lib/deploy/ocpu-balancer.jar", "-server", "-XX:+UseConcMarkSweepGC", "-Xmx1g"]
+CMD ["-jar", "/var/lib/deploy/ocpu-balancer.jar", "-server", -Xmx1g"]
