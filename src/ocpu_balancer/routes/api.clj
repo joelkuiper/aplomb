@@ -37,7 +37,7 @@
 
 (defonce upstreams (parse-list (env :upstreams)))
 
- ;; WARNING: THIS IS MUTABLE!
+ ;; WARNING: the cache is a mutable data structure (Guava Cache)
 (defonce tasks (cache/create-cache :soft-values true))
 
 (def base-uri
