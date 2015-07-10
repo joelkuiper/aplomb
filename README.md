@@ -5,12 +5,12 @@
 lein uberjar
 docker build .
 
-docker save [image id] > ocpu-balancer.tar
+docker save [image id] > aplomb.tar
 ````
 scp it to the server.
 ## To run
 ````
-docker load < ocpu-balancer.tar
+docker load < aplomb.tar
 
 # for sanity you should tag the image with docker tag [image id] [name]
 

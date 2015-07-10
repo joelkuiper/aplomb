@@ -1,4 +1,4 @@
-(ns ocpu-balancer.security
+(ns aplomb.security
   (:require
    [taoensso.timbre :as timbre]
    [environ.core :refer [env]]

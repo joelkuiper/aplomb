@@ -1,1 +1,1 @@
-web: java $JVM_OPTS -cp target/ocpu-balancer.jar clojure.main -m ocpu-balancer.core
+web: java $JVM_OPTS -cp target/aplomb.jar clojure.main -m aplomb.core

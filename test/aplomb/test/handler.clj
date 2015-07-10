@@ -1,7 +1,7 @@
-(ns ocpu-balancer.test.handler
+(ns aplomb.test.handler
   (:use clojure.test
         ring.mock.request
-        ocpu-balancer.handler))
+        aplomb.handler))
 
 (deftest test-app
   (testing "main route"

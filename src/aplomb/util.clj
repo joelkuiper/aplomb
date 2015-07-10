@@ -1,4 +1,4 @@
-(ns ocpu-balancer.util
+(ns aplomb.util
   (:require [environ.core :refer [env]]))
 
 (def canonical-host

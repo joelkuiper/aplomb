@@ -1,7 +1,7 @@
-(ns ocpu-balancer.middleware
+(ns aplomb.middleware
   (:require
-   [ocpu-balancer.util :refer [in-dev]]
-   [ocpu-balancer.security :as security]
+   [aplomb.util :refer [in-dev]]
+   [aplomb.security :as security]
    [taoensso.timbre :as timbre]
    [environ.core :refer [env]]
    [clojure.java.io :as io]

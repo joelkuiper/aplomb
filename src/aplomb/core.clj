@@ -1,7 +1,7 @@
-(ns ocpu-balancer.core
+(ns aplomb.core
   (:require
-   [ocpu-balancer.handler :refer [app init destroy]]
-   [ocpu-balancer.util :refer [canonical-host in-dev]]
+   [aplomb.handler :refer [app init destroy]]
+   [aplomb.util :refer [canonical-host in-dev]]
    [ring.middleware.reload :as reload]
    [org.httpkit.server :as http-kit]
    [environ.core :refer [env]]

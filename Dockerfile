@@ -13,7 +13,7 @@ RUN useradd --create-home --home /var/lib/deploy deploy
 
 RUN apt-get -y install openjdk-8-jre-headless --no-install-recommends --no-install-suggests
 
-ADD ./target/ocpu-balancer.jar /var/lib/deploy/ocpu-balancer.jar
+ADD ./target/aplomb.jar /var/lib/deploy/aplomb.jar
 
 USER deploy
 EXPOSE 3000
@@ -23,4 +23,4 @@ ENV PORT 3000
 
 ENTRYPOINT ["java"]
 
-CMD ["-jar", "/var/lib/deploy/ocpu-balancer.jar", "-server", "-XX:+UseConcMarkSweepGC", "-Xmx1g"]
+CMD ["-jar", "/var/lib/deploy/aplomb.jar", "-server", "-XX:+UseConcMarkSweepGC", "-Xmx1g"]

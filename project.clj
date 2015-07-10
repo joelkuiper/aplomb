@@ -1,4 +1,4 @@
-(defproject ocpu-balancer "0.1.0-SNAPSHOT"
+(defproject aplomb "0.1.0-SNAPSHOT"
 
   :description "FIXME: write description"
   :url "http://example.com/FIXME"
@@ -30,15 +30,15 @@
                  [http-kit "2.1.19"]]
 
   :min-lein-version "2.0.0"
-  :uberjar-name "ocpu-balancer.jar"
+  :uberjar-name "aplomb.jar"
   :jvm-opts ["-server"]
 
   :env {:repl-port 7001
         :port 3000
-        :api-secret "secret" ;; generate with (ocpu-balancer.security/random-token)
+        :api-secret "secret" ;; generate with (aplomb.security/random-token)
         :upstreams "http://192.168.178.27/|1,http://192.168.178.27/|1"}
 
-  :main ocpu-balancer.core
+  :main aplomb.core
 
   :plugins [[lein-environ "1.0.0"]
             [lein-ancient "0.6.5"]]
@@ -52,7 +52,7 @@
                         [ring/ring-devel "1.3.2"]
                         [pjstadig/humane-test-output "0.7.0"]]
          :source-paths ["env/dev/clj"]
-         :repl-options {:init-ns ocpu-balancer.core}
+         :repl-options {:init-ns aplomb.core}
          :injections [(require 'pjstadig.humane-test-output)
                       (pjstadig.humane-test-output/activate!)]
          :env {:dev true}}})

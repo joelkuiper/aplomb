@@ -1,4 +1,4 @@
-(ns ocpu-balancer.routes.home
+(ns aplomb.routes.home
   (:require [compojure.core :refer [defroutes GET]]
             [ring.util.http-response :refer [ok]]
             [clojure.java.io :as io]))

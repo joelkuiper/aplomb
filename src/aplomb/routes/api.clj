@@ -1,9 +1,9 @@
-(ns ocpu-balancer.routes.api
+(ns aplomb.routes.api
   (:require
    [buddy.auth.accessrules :refer [restrict]]
-   [ocpu-balancer.util :refer [in-dev dissoc-in canonical-host]]
-   [ocpu-balancer.cache :as cache]
-   [ocpu-balancer.security :as security]
+   [aplomb.util :refer [in-dev dissoc-in canonical-host]]
+   [aplomb.cache :as cache]
+   [aplomb.security :as security]
    [environ.core :refer [env]]
    [clojure.string :as str]
    [compojure.core :refer [context defroutes OPTIONS POST PUT GET]]

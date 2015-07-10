@@ -1,9 +1,9 @@
-(ns ocpu-balancer.handler
+(ns aplomb.handler
   (:require [compojure.core :refer [defroutes routes wrap-routes]]
-            [ocpu-balancer.routes.home :refer [home-routes]]
-            [ocpu-balancer.routes.api :refer [api-routes] :as api]
-            [ocpu-balancer.util :refer [in-dev]]
-            [ocpu-balancer.middleware :as middleware]
+            [aplomb.routes.home :refer [home-routes]]
+            [aplomb.routes.api :refer [api-routes] :as api]
+            [aplomb.util :refer [in-dev]]
+            [aplomb.middleware :as middleware]
             [compojure.route :as route]
             [taoensso.timbre :as timbre]
             [taoensso.timbre.appenders.rotor :as rotor]
@@ -50,14 +50,14 @@
 
   (start-nrepl)
   (api/init!)
-  (timbre/info "\n-=[ ocpu-balancer started successfully"
+  (timbre/info "\n-=[ aplomb started successfully"
                (when in-dev "using the development profile") "]=-"))
 
 (defn destroy
   "destroy will be called when your application
    shuts down, put any clean up code here"
   []
-  (timbre/info "ocpu-balancer is shutting down...")
+  (timbre/info "aplomb is shutting down...")
   (stop-nrepl)
   (timbre/info "shutdown complete!"))
 

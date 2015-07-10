@@ -2,7 +2,7 @@
 
 ### Managing Your Middleware
 
-Request middleware functions are located under the `ocpu-balancer.middleware` namespace.
+Request middleware functions are located under the `aplomb.middleware` namespace.
 A request logging helper called `log-request` is defined below:
 
 ```clojure

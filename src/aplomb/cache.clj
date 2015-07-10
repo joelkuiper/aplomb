@@ -1,4 +1,4 @@
-(ns ocpu-balancer.cache
+(ns aplomb.cache
   (:import [com.google.common.cache CacheBuilder CacheLoader Cache LoadingCache]
            [java.util.concurrent TimeUnit Callable])
   (:require [potemkin.collections :refer [def-map-type]])
