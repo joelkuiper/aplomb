@@ -37,8 +37,12 @@
 
 (defonce upstreams (parse-list (env :upstreams)))
 
- ;; WARNING: the cache is a mutable data structure (Guava Cache)
+;; WARNING: the cache is a mutable data structure (Guava Cache)
+;; We alias the common methods to distinguish them from their immutable counterparts
 (defonce tasks (cache/create-cache :soft-values true))
+(def assoc! assoc)
+(def assoc-in! assoc-in)
+(def update-in! update-in)
 
 (def base-uri
   (let [scheme (if in-dev "http" "https")
@@ -97,9 +101,9 @@
       (do
         (timbre/debug "starting with" id)
 
-        (update-in tasks [id] assoc
-                   :base base
-                   :resp (deliver (:resp t) (send-upstream id base (:req t))))
+        (update-in! tasks [id] assoc
+                    :base base
+                    :resp (deliver (:resp t) (send-upstream id base (:req t))))
 
         (deref (:resp (get tasks id))) ; block future
         (q/complete! task)
@@ -126,7 +130,7 @@
   [req]
   (let [id (random-id)
         bare-req (dissoc req :async-channel)]
-    (assoc tasks id {:req bare-req :resp (promise)})
+    (assoc! tasks id {:req bare-req :resp (promise)})
     (q/put! q qk id)
     (http/content-type
      (http/accepted
@@ -160,8 +164,7 @@
       (-> (client/get uri {:as :stream
                           :throw-exceptions false
                           :force-redirects true})
-         (dissoc-in [:headers "transfer-encoding"]))
-      )
+         (dissoc-in [:headers "transfer-encoding"])))
     (http/not-found)))
 
 ;;;;;;;;;;;
@@ -188,7 +191,7 @@
     (if-not task
       (http/not-found)
       (dosync
-       (assoc-in tasks [id :last-update] update) ;; update the last status
+       (assoc-in! tasks [id :last-update] update) ;; update the last status
        (let [connected (get @clients id #{})]
          (doseq [client connected]
            (server/send! client update)))
