@@ -55,6 +55,8 @@ Concretely, we use it to proxy requests to [[https://www.opencpu.org/][OpenCPU]]
 }
 #+END_SRC
 
+Will return a =401 Unauthorized= if the correct =API_SECRET= was not provided in the the =Authorization= header.
+
 [2]: In practice this means that http://192.168.178.120:5000/api/response/<id>/foo gets proxied to the <upstream-response>/foo. See OpenCPU documentation for concrete examples (e.g. retrieving additional images).
 
 [3]: The callback URI is generated from the ID as JWT and inserted as an additional form field parameter in the POST called =statusUri=.
