@@ -30,7 +30,7 @@ Concretely, we use it to proxy requests to [[https://www.opencpu.org/][OpenCPU]]
 
 | Method | URI            | Response                  | Description                                                                                                                             |
 |--------+----------------+---------------------------+-----------------------------------------------------------------------------------------------------------------------------------------|
-| POST   | api/submit     | 202 Accepted              | Queues the POST body, and will relay it to when the first upstream core becomes available, immediately returns a response of format [1] |
+| POST   | api/submit     | 202 Accepted              | Queues the POST body, and will relay it to the first upstream core when it becomes available, immediately returns a response of format [1] |
 | GET    | response/:id   | Upstream HTTP response    | Blocks (Comet/long-polling) until the response for that ID becomes available                                                            |
 | GET    | response/:id/* | Upstream HTTP response    | Proxies additional data associated with that ID [2]                                                                                     |
 | GET    | status/:id/ws  | 101 Web socket connection | WebSocket connection to listen for updates                                                                                              |
@@ -59,7 +59,7 @@ Will return a =401 Unauthorized= if the correct =API_SECRET= was not provided in
 
 [2]: In practice this means that http://192.168.178.120:5000/api/response/<id>/foo gets proxied to the <upstream-response>/foo. See OpenCPU documentation for concrete examples (e.g. retrieving additional images).
 
-[3]: The callback URI is generated from the ID as JWT and inserted as an additional form field parameter in the POST called =statusUri=.
+[3]: The callback URI is generated from the ID as JWS and inserted as an additional form field parameter in the POST called =statusUri=.
 
 * Caveat Q&A
 - What happens if the upstreams are unresponsive? The request will time out, or stall, there is no explicit handling of this case (maybe look into [[https://github.com/Netflix/Hystrix][Hystrix]])
