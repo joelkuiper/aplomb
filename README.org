@@ -34,7 +34,7 @@ Concretely, we use it to proxy requests to [[https://www.opencpu.org/][OpenCPU]]
 | GET    | /response/:id   | Upstream HTTP response    | Blocks (Comet/long-polling) until the response the the request with that ID becomes available |
 | GET    | /response/:id/* | Upstream HTTP response    | Proxies additional data associated with that ID [2]                                           |
 | GET    | /status/:id/ws  | 101 Web socket connection | WebSocket connection to listen for updates                                                    |
-| PUT    | /status?id=     | 204 No content            | Puts an update on the generated callback URI (using JWT) [3]                                  |
+| PUT    | /status?id=     | 204 No content            | Puts an update on the generated callback URI (using JWS) [3]                                 |
 
 [1]: The response looks like
 
@@ -66,6 +66,7 @@ Will return a =401 Unauthorized= if the correct =API_SECRET= was not provided in
 - What if the proxy crashes? All queued and running tasks are lost, and will not be retried
 - What if memory runs out? The request-response pairs are held as [[https://docs.oracle.com/javase/7/docs/api/java/lang/ref/SoftReference.html][SoftReference]], under memory pressure they will be garbage collected. Treat the proxy as non-durable and non-persistent
 - What if a non-finished request/response gets garbage collected? Tough luck
+- What about security? The =POST= route is secured with a simple HTTP Token, which should be secure enough if properly deployed under =HTTPS=. The =PUT= routes are generated from the generated ID's using [[https://funcool.github.io/buddy-sign/latest/#jws][JWS]], so risk of rogue agents pushing status updates is minimal. The ID's are cryptographically randomly generated, but could be swept for so using rate-limiting solutions are recommended.
 
 * Configuration
 Configuration is provided via [[https://github.com/weavejester/environ][environ]], which uses environment variables to control settings.
