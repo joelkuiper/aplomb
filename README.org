@@ -96,7 +96,7 @@ docker run -d --restart="on-failure" -e "UPSTREAMS=http://172.16.8.11|2,http://1
 #+END_SRC
 
 Obviously change the =UPSTREAMS=, =API_SECRET= and =HOST_ADDR=.
-Look into the recommend [[http://nginx.org/][Nginx]] configuration for reverse proxy-ing with support for HTTPS and rate limiting.
+Look into the recommend [[http://nginx.org/][Nginx]] [[https://github.com/joelkuiper/aplomb/blob/master/resources/docs/nginx.conf][configuration]] for reverse proxy-ing with support for HTTPS and rate limiting.
 
 * License
 Copyright (c) 2015, Joël Kuiper
