@@ -2,7 +2,7 @@
   (:require [compojure.core :refer [defroutes routes wrap-routes]]
             [aplomb.routes.home :refer [home-routes]]
             [aplomb.routes.api :refer [api-routes] :as api]
-            [aplomb.util :refer [in-dev]]
+            [aplomb.util :refer [in-dev?]]
             [aplomb.middleware :as middleware]
             [compojure.route :as route]
             [taoensso.timbre :as timbre]
@@ -38,7 +38,7 @@
   []
   (timbre/set-config!
    [:appenders :rotor]
-   {:min-level             (if in-dev :debug :info)
+   {:min-level             (if in-dev? :debug :info)
     :enabled?              true
     :async?                false ; should be always false for rotor
     :max-message-per-msecs nil
@@ -51,7 +51,7 @@
   (start-nrepl)
   (api/init!)
   (timbre/info "\n-=[ aplomb started successfully"
-               (when in-dev "using the development profile") "]=-"))
+               (when in-dev? "using the development profile") "]=-"))
 
 (defn destroy
   "destroy will be called when your application
@@ -59,6 +59,7 @@
   []
   (timbre/info "aplomb is shutting down...")
   (stop-nrepl)
+  (api/shutdown!)
   (timbre/info "shutdown complete!"))
 
 (def app

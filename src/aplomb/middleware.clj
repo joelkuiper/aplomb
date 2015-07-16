@@ -1,6 +1,6 @@
 (ns aplomb.middleware
   (:require
-   [aplomb.util :refer [in-dev]]
+   [aplomb.util :refer [in-dev?]]
    [aplomb.security :as security]
    [taoensso.timbre :as timbre]
    [environ.core :refer [env]]
@@ -25,7 +25,7 @@
          :body (-> "templates/error.html" io/resource slurp)}))))
 
 (defn wrap-dev [handler]
-  (if in-dev
+  (if in-dev?
     (-> handler
        wrap-error-page
        wrap-exceptions)

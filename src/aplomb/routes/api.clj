@@ -1,7 +1,7 @@
 (ns aplomb.routes.api
   (:require
    [buddy.auth.accessrules :refer [restrict]]
-   [aplomb.util :refer [in-dev dissoc-in canonical-host]]
+   [aplomb.util :refer [in-dev? dissoc-in canonical-host]]
    [aplomb.cache :as cache]
    [aplomb.security :as security]
    [environ.core :refer [env]]
@@ -38,14 +38,14 @@
 (defonce upstreams (parse-list (env :upstreams)))
 
 ;; WARNING: the cache is a mutable data structure (Guava Cache)
-;; We alias the common methods to distinguish them from their immutable counterparts
+;; We alias the common methods to distinguish them from their immutable counterparts, this is purely cosmetic
 (defonce tasks (cache/create-cache :soft-values true))
-(def assoc! assoc)
-(def assoc-in! assoc-in)
-(def update-in! update-in)
+(def assoc!! assoc)
+(def assoc-in!! assoc-in)
+(def update-in!! update-in)
 
 (def base-uri
-  (let [scheme (if in-dev "http" "https")
+  (let [scheme (if in-dev? "http" "https")
         base (str scheme "://" canonical-host)]
     (urly/url-like base)))
 
@@ -66,7 +66,14 @@
                 (do (timbre/error e)
                     (http/service-unavailable (.getMessage e)))))))))))
 
-(defn init! [] (start-consumers upstreams))
+(def num-cores (.availableProcessors (Runtime/getRuntime)))
+(def cm (clj-http.conn-mgr/make-reusable-conn-manager {:timeout 36 :threads num-cores}))
+
+(defn init! []
+  (start-consumers upstreams))
+
+(defn shutdown! []
+  (clj-http.conn-mgr/shutdown-manager cm))
 
 ;;;;;;;;;;;;;;
 ;; Processing
@@ -90,7 +97,7 @@
            (assoc :throw-exceptions false))]
     (timbre/debug "sending off to" uri)
     (try
-      (client/post uri upstream-req)
+      (client/post uri upstream-req {:connection-manager cm})
       (catch Exception e
         (do (timbre/error e) (http/service-unavailable (.getMessage e)))))))
 
@@ -101,9 +108,9 @@
       (do
         (timbre/debug "starting with" id)
 
-        (update-in! tasks [id] assoc
-                    :base base
-                    :resp (deliver (:resp t) (send-upstream id base (:req t))))
+        (update-in!! tasks [id] assoc
+                     :base base
+                     :resp (deliver (:resp t) (send-upstream id base (:req t))))
 
         (deref (:resp (get tasks id))) ; block future
         (q/complete! task)
@@ -117,7 +124,7 @@
 (defn task-status-resp
   [req id]
   (let [response-uri (.mutatePath base-uri (str "/api/response/" id))
-        ws-protocol (if in-dev "ws" "wss")
+        ws-protocol (if in-dev? "ws" "wss")
         status-uri (.mutateProtocol
                     (.mutatePath base-uri (str "/api/status/" id "/ws")) ws-protocol)]
     {:id id
@@ -130,7 +137,7 @@
   [req]
   (let [id (random-id)
         bare-req (dissoc req :async-channel)]
-    (assoc! tasks id {:req bare-req :resp (promise)})
+    (assoc!! tasks id {:req bare-req :resp (promise)})
     (q/put! q qk id)
     (http/content-type
      (http/accepted
@@ -163,6 +170,7 @@
 
       (-> (client/get uri {:as :stream
                           :throw-exceptions false
+                          :connection-manager cm
                           :force-redirects true})
          (dissoc-in [:headers "transfer-encoding"])))
     (http/not-found)))
@@ -191,7 +199,7 @@
     (if-not task
       (http/not-found)
       (dosync
-       (assoc-in! tasks [id :last-update] update) ;; update the last status
+       (assoc-in!! tasks [id :last-update] update) ;; update the last status
        (let [connected (get @clients id #{})]
          (doseq [client connected]
            (server/send! client update)))

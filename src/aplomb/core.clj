@@ -1,7 +1,7 @@
 (ns aplomb.core
   (:require
    [aplomb.handler :refer [app init destroy]]
-   [aplomb.util :refer [canonical-host in-dev]]
+   [aplomb.util :refer [canonical-host in-dev?]]
    [ring.middleware.reload :as reload]
    [org.httpkit.server :as http-kit]
    [environ.core :refer [env]]
@@ -15,7 +15,7 @@
   (init)
   (reset! server
           (http-kit/run-server
-           (if in-dev (reload/wrap-reload #'app) app)
+           (if in-dev? (reload/wrap-reload #'app) app)
            {:port port})))
 
 (defn stop-server []
