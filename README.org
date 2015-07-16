@@ -73,7 +73,7 @@ Will return a =401 Unauthorized= if the correct =API_SECRET= was not provided in
 Configuration is provided via [[https://github.com/weavejester/environ][environ]], which uses environment variables to control settings.
 The following settings are available:
 
-- =UPSTREAMS=  A comma delimited list of the format =addr_1|num_cors,addr_2|num_cores= which specifies the available upstream servers
+- =UPSTREAMS=  A comma delimited list of the format =addr_1|num_cores,addr_2|num_cores= which specifies the available upstream servers
 - =HOST_ADDR= The canonical address of the server, without protocol. Will be guessed at if not supplied
 - =PORT= The port to run the Aplomb on
 - =API_SECRET= The API token that will give access to the post routes if provided as the =Authorization: Token <API_SECRET>= header
