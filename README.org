@@ -30,7 +30,7 @@ Concretely, we use it to proxy requests to [[https://www.opencpu.org/][OpenCPU]]
 
 | Method | URI             | Response                  | Description                                                                                   |
 |--------+-----------------+---------------------------+-----------------------------------------------------------------------------------------------|
-| POST   | /api/submit     | 202 Accepted              | Queues the POST body, and will relay it to when the first upstream core becomes available [1] |
+| POST   | /api/submit     | 202 Accepted              | Queues the POST body, and will relay it to when the first upstream core becomes available, immediately returns a response of format [1] |
 | GET    | /response/:id   | Upstream HTTP response    | Blocks (Comet/long-polling) until the response the the request with that ID becomes available |
 | GET    | /response/:id/* | Upstream HTTP response    | Proxies additional data associated with that ID [2]                                           |
 | GET    | /status/:id/ws  | 101 Web socket connection | WebSocket connection to listen for updates                                                    |
