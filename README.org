@@ -75,7 +75,7 @@ The following settings are available:
 
 - =UPSTREAMS=  A comma delimited list of the format =addr_1|num_cors,addr_2|num_cores= which specifies the available upstream servers
 - =HOST_ADDR= The canonical address of the server, without protocol. Will be guessed at if not supplied
-- =POST= The port to run the Aplomb on
+- =PORT= The port to run the Aplomb on
 - =API_SECRET= The API token that will give access to the post routes if provided as the =Authorization: Token <API_SECRET>= header
 - =DEV= Development mode, disables HTTPS and WSS URIs, attempts hot code reload, gives more debug output
 - =REPL_PORT= If provided will start an nREPL on that port
