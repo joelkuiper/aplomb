@@ -67,7 +67,7 @@
                     (http/service-unavailable (.getMessage e)))))))))))
 
 (def num-cores (.availableProcessors (Runtime/getRuntime)))
-(def cm (clj-http.conn-mgr/make-reusable-conn-manager {:timeout 36 :threads num-cores}))
+(def cm (clj-http.conn-mgr/make-reusable-conn-manager {:timeout 60 :threads num-cores}))
 
 (defn init! []
   (start-consumers upstreams))
@@ -97,7 +97,7 @@
            (assoc :throw-exceptions false))]
     (timbre/debug "sending off to" uri)
     (try
-      (client/post uri upstream-req {:connection-manager cm})
+      (client/post uri upstream-req)
       (catch Exception e
         (do (timbre/error e) (http/service-unavailable (.getMessage e)))))))
 
