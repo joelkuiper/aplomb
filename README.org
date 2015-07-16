@@ -1,0 +1,123 @@
+*This is an alpha release. We are using it internally in production, but the API and organizational structure are subject to change. Comments and suggestions are much appreciated.*
+
+* Introduction
+#+BEGIN_QUOTE
+"For every complex problem there is an answer that is clear, simple, and wrong." - H. L. Mencken
+#+END_QUOTE
+
+This is such an answer.
+It is wrong because a more scalable, durable, and reliable solution would be to use a queue like [[https://www.rabbitmq.com/][RabbitMQ]], [[https://kafka.apache.org/][Kafka]], or similar.
+But sometimes quick and dirty does the trick, with minimal overhead.
+
+Consider the following use case:
+1. You have an HTTP service that requires some time to process requests (think several minutes)
+2. These requests take considerable computational resources to process (e.g. 100% CPU), so the amount of parallelism is constraint
+3. You have a somewhat complicated non-asynchronous application that would like to make requests
+4. You have a client-side application where users will wait for responses, and you wish to relay progress information
+
+Enter Aplomb.
+
+#+BEGIN_QUOTE
+aplomb |əˈplɒm|
+noun [ mass noun ]
+self-confidence or assurance, especially when in a demanding situation
+#+END_QUOTE
+
+Aplomb queues requests and dispatches them to upstream servers when they are available, proxies their responses, and has an HTTP callback API that can deliver status updates over web sockets.
+Concretely, we use it to proxy requests to [[https://www.opencpu.org/][OpenCPU]], an R analysis solution over HTTP.
+
+* API
+
+| Method | URI             | Response                  | Description                                                                                   |
+|--------+-----------------+---------------------------+-----------------------------------------------------------------------------------------------|
+| POST   | /api/submit     | 202 Accepted              | Queues the POST body, and will relay it to when the first upstream core becomes available [1] |
+| GET    | /response/:id   | Upstream HTTP response    | Blocks (Comet/long-polling) until the response the the request with that ID becomes available |
+| GET    | /response/:id/* | Upstream HTTP response    | Proxies additional data associated with that ID [2]                                           |
+| GET    | /status/:id/ws  | 101 Web socket connection | WebSocket connection to listen for updates                                                    |
+| PUT    | /status?id=     | 204 No content            | Puts an update on the generated callback URI (using JWT) [3]                                  |
+
+[1]: The response looks like
+
+#+BEGIN_SRC json
+{
+  "id": "mHsqG4fyKQs",
+  "requestUri": "http://localhost:5000/api/submit?url=...",
+  "responseUri": "http://192.168.178.120:5000/api/response/mHsqG4fyKQs",
+  "statusUri": "ws://192.168.178.120:5000/api/status/mHsqG4fyKQs/ws",
+  "queue": {
+    "num-slabs": 1,
+    "num-active-slabs": 1,
+    "enqueued": 1,
+    "retried": 0,
+    "completed": 0,
+    "in-progress": 1
+  }
+}
+#+END_SRC
+
+[2]: In practice this means that http://192.168.178.120:5000/api/response/<id>/foo gets proxied to the <upstream-response>/foo. See OpenCPU documentation for concrete examples (e.g. retrieving additional images).
+
+[3]: The callback URI is generated from the ID as JWT and inserted as an additional form field parameter in the POST called =statusUri=.
+
+* Caveat Q&A
+- What happens if the upstreams are unresponsive? The request will time out, or stall, there is no explicit handling of this case (maybe look into [[https://github.com/Netflix/Hystrix][Hystrix]])
+- What if the proxy crashes? All queued and running tasks are lost, and will not be retried
+- What if memory runs out? The request-response pairs are held as [[https://docs.oracle.com/javase/7/docs/api/java/lang/ref/SoftReference.html][SoftReference]], under memory pressure they will be garbage collected. Treat the proxy as non-durable and non-persistent
+- What if a non-finished request/response gets garbage collected? Tough luck
+
+* Configuration
+Configuration is provided via [[https://github.com/weavejester/environ][environ]], which uses environment variables to control settings.
+The following settings are available:
+
+- =UPSTREAMS=  A comma delimited list of the format =addr_1|num_cors,addr_2|num_cores= which specifies the available upstream analysis servers
+- =HOST_ADDR= The canonical address of the server, without protocol. Will be guessed at if not supplied
+- =POST= The port to run the Aplomb on
+- =API_SECRET= The API token that will give access to the post routes if provided as the =Authorization: Token <API_SECRET>= header
+- =DEV= Development mode, disables HTTPS and WSS URIs, attempts hot code reload, gives more debug output
+- =REPL_PORT= If provided will start an nREPL on that port
+
+* Deploy
+** To build
+#+BEGIN_SRC bash
+lein uberjar
+docker build .
+
+docker save [image id] > aplomb.tar
+#+END_SRC
+SCP it to the server.
+
+** To run
+#+BEGIN_SRC
+docker load < aplomb.tar
+
+# for sanity you should tag the image with `docker tag [image id] [name]`
+
+docker run -d --restart="on-failure" -e "UPSTREAMS=http://172.16.8.11|2,http://172.16.8.12|2" -e "HOST_ADDR=foo.bar" -e "PORT=3000" -e "API_SECRET=foo" -e "DEV=false" -p 3000:3000 [image id]
+#+END_SRC
+
+Obviously change the =UPSTREAMS=, =API_SECRET= and =HOST_ADDR=.
+Look into the recommend [[http://nginx.org/][Nginx]] configuration for reverse proxy-ing with support for HTTPS and rate limiting.
+
+* License
+Copyright (c) 2015, Joël Kuiper
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR
+ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
